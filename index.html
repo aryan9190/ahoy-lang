@@ -1,71 +1,78 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Ahoy! Playground</title>
-        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-        <style>
-            body {
-                background-color: #152843;
-                color: #ffff2c;
-                font-family: monospace;
-                padding: 2em;
-            }
-            textarea, pre {
-                width: 100%;
-                background: #556d8f;
-                color: #f4f42a;
-                border: 1px solid #001a37;
-                padding: 1em;
-                font-size: 1em;
-            }
-            button {
-                margin-top: 1em;
-                padding: 0.5em 1em;
-                background: #e0be00;
-                border: none;
-                font-weight: bold;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Ahoy! Pirate Playground</h1>
-        <textarea id="code" rows="10">Fire the cannon!</textarea>
-        <br>
-        <button onclick="runCode()">Run Code</button>
-        <pre id="output"></pre>
+<head>
+  <meta charset="utf-8">
+  <title>Ahoy! Pirate Playground</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <style>
+    body {
+      background-color: #152843;
+      color: #ffff2c;
+      font-family: monospace;
+      padding: 2em;
+    }
+    textarea, pre {
+      width: 100%;
+      background: #556d8f;
+      color: #f4f42a;
+      border: 1px solid #001a37;
+      padding: 1em;
+      font-size: 1em;
+    }
+    button {
+      margin-top: 1em;
+      padding: 0.5em 1em;
+      background: #e0be00;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏴‍☠️ Ahoy! Pirate Playground</h1>
+  <textarea id="code" rows="10">Parrot says Ahoy, matey!</textarea>
+  <br>
+  <button onclick="runCode()">Run Code</button>
+  <pre id="output">🏴‍☠️ Waiting for orders...</pre>
 
-        <script>
-            let pyodideReady = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" });
+  <script>
+    let pyodideReady = loadPyodide();
 
-            async function runCode() {
-                const output = document.getElementById("output");
-                output.textContent = "🏴‍☠ Sailing...";
+    async function runCode() {
+      const output = document.getElementById("output");
+      output.textContent = "🏴‍☠️ Sailing...";
 
-                let pyodide = await pyodideReady;
-                await pyodide.loadPackagesFromImports(`import sys, io, random`);
+      try {
+        const pyodide = await pyodideReady;
 
-                const code = document.getElementById("code").value;
+        const files = ['parser.py', 'interpreter.py', 'utils.py'];
+        for (const file of files) {
+          const res = await fetch(file);
+          const text = await res.text();
+          pyodide.FS.writeFile(file, text);
+        }
 
-                await pyodide.runPythonAsync(`
-import sys, io, random
-from textwrap import dedent
+        const userCode = document.getElementById("code").value;
+        pyodide.FS.writeFile("temp.ahoy", userCode);
 
+        await pyodide.runPythonAsync(`
+import sys
+import io
 sys.stdout = io.StringIO()
-code = dedent("""${code}""")
-with open("temp.ahoy", "w") as f:
-    f.write(code)
-`);
 
-                await pyodide.runPythonAsync(`
 from parser import parse
 from interpreter import run
 run("temp.ahoy")
-`);
+        `);
 
-                const result = await pyodide.runPython("sys.stdout.getvalue()");
-                output.textContent = result;
-            }
-        </script>
-    </body>
+        const result = await pyodide.runPython("sys.stdout.getvalue()");
+        output.textContent = result.trim() || "Done, but nothing to print.";
+
+      } catch (err) {
+        output.textContent = "Error:\n" + err;
+      }
+    }
+  </script>
+</body>
 </html>
